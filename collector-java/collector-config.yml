@@ -1,0 +1,44 @@
+receivers:
+  jmx:
+    jar_path: /jmx-metrics.jar
+    endpoint: broker:9101
+    target_system: kafka
+  otlp:
+    protocols:
+      grpc:
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'selfreport'
+          scrape_interval: 5s
+          static_configs:
+            - targets: ['0.0.0.0:8888']
+
+exporters:
+  logging:
+    loglevel: debug
+  otlp:
+    endpoint: ingest.lightstep.com:443
+    compression: gzip
+    headers: {"lightstep-access-token": "<TOKEN>"}
+    retry_on_failure:
+      enabled: false
+
+processors:
+  batch:
+
+extensions:
+  zpages:
+    endpoint: :55679
+
+service:
+  extensions: [zpages]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging, otlp]
+    metrics:
+      receivers: [jmx, otlp, prometheus]
+      processors: [batch]
+      exporters: [logging, otlp]
